@@ -2,23 +2,23 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  ferriesSpecs,
+  wsfSpecs,
   getTagMetadata,
   listOperationsForApi,
-} from "../../openapi/ferries.js";
-import type { apiKey } from "../../wsdottieClient.js";
-import { createErrorResponse } from "../errorHandler.js";
+} from "../openapi/index.js";
+import type { apiKey } from "../wsdottieClient.js";
+import { createErrorResponse } from "./createErrorResponse.js";
 
-const apiKeys = Object.keys(ferriesSpecs) as apiKey[];
+const apiKeys = Object.keys(wsfSpecs) as apiKey[];
 const apiEnum = z.enum(apiKeys as [apiKey, ...apiKey[]]);
 
 /**
- * Registers the ferry documentation tools with the MCP server.
+ * Registers the documentation tools with the MCP server.
  * Provides tools for retrieving endpoint group documentation and metadata.
  *
  * @param server - The MCP server instance to register tools with
  */
-export const registerFerryDocsTools = (server: McpServer): void => {
+export const registerDocsTools = (server: McpServer): void => {
   server.registerTool(
     "get_ferries_endpoint_group_docs",
     {
@@ -66,3 +66,4 @@ export const registerFerryDocsTools = (server: McpServer): void => {
     }
   );
 };
+

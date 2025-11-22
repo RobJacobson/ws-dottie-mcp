@@ -15,17 +15,17 @@ import wsfVessels from "ws-dottie/openapi/wsf-vessels.json" with {
 const asOpenAPIDoc = (spec: unknown): OpenAPIV3.Document =>
   spec as OpenAPIV3.Document;
 
-export const ferriesSpecs = {
+export const wsfSpecs = {
   "wsf-vessels": asOpenAPIDoc(wsfVessels),
   "wsf-terminals": asOpenAPIDoc(wsfTerminals),
   "wsf-schedule": asOpenAPIDoc(wsfSchedule),
   "wsf-fares": asOpenAPIDoc(wsfFares),
 } as const;
 
-export type FerriesSpecKey = keyof typeof ferriesSpecs;
+export type WsfApiKey = keyof typeof wsfSpecs;
 
 export type OperationSpec = {
-  apiKey: FerriesSpecKey;
+  apiKey: WsfApiKey;
   operationId: string;
   tag: string;
   summary?: string;
@@ -37,16 +37,16 @@ export type OperationSpec = {
 };
 
 /**
- * Lists all operations from a specific ferries API OpenAPI specification.
+ * Lists all operations from a specific WSF API OpenAPI specification.
  * Scans all paths and methods to extract operation details.
  *
- * @param apiKey - The API key identifying which ferries API to scan
+ * @param apiKey - The API key identifying which WSF API to scan
  * @returns Array of operation specifications found in the API
  */
 export const listOperationsForApi = (
-  apiKey: FerriesSpecKey
+  apiKey: WsfApiKey
 ): OperationSpec[] => {
-  const doc = ferriesSpecs[apiKey];
+  const doc = wsfSpecs[apiKey];
   const operations: OperationSpec[] = [];
   Object.entries(doc.paths ?? {}).forEach(([path, pathSpec]) => {
     if (!pathSpec) return;
@@ -86,15 +86,15 @@ export type TagMetadata = {
  * Retrieves metadata for a specific tag (endpoint group) from an API specification.
  * Extracts tag information including description, cache strategy, and update frequency.
  *
- * @param apiKey - The API key identifying which ferries API to query
+ * @param apiKey - The API key identifying which WSF API to query
  * @param tagName - The name of the tag to retrieve metadata for
  * @returns Tag metadata if found, undefined otherwise
  */
 export const getTagMetadata = (
-  apiKey: FerriesSpecKey,
+  apiKey: WsfApiKey,
   tagName: string
 ): TagMetadata | undefined => {
-  const tag = ferriesSpecs[apiKey].tags?.find(
+  const tag = wsfSpecs[apiKey].tags?.find(
     (entry) => entry.name === tagName
   );
   if (!tag) return undefined;
@@ -114,3 +114,4 @@ export const getTagMetadata = (
         : undefined,
   };
 };
+

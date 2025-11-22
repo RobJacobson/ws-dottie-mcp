@@ -9,7 +9,7 @@ import { registerTool } from "../utils/createDottieTool.js";
  * so the surrounding MCP wrapper (see `createDottieTool`) can expose the same
  * schemas and return structuredContent `{ data: ... }` for client consumption.
  */
-export const registerFerriesTools = (server: McpServer) => {
+export const registerVesselsTools = (server: McpServer) => {
   const api = "wsf-vessels" as const;
   const endpoints = endpointsByApi[api];
 
@@ -21,3 +21,4 @@ export const registerFerriesTools = (server: McpServer) => {
   registerTool(server, api, endpoints, "vessel-stats");
   registerTool(server, api, endpoints, "vessel-verbose");
 };
+
