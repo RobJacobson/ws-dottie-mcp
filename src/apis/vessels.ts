@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { endpointsByApi } from "ws-dottie/apis";
-import { registerTool } from "../utils/createDottieTool.js";
+import { createRegisterTool } from "../utils/createDottieTool.js";
 
 /**
  * Registers every wsf-vessels endpoint as an MCP tool.
@@ -12,13 +12,20 @@ import { registerTool } from "../utils/createDottieTool.js";
 export const registerVesselsTools = (server: McpServer) => {
   const api = "wsf-vessels" as const;
   const endpoints = endpointsByApi[api];
+  const registerTool = createRegisterTool(server, api, endpoints);
 
-  registerTool(server, api, endpoints, "cache-flush-date-vessels");
-  registerTool(server, api, endpoints, "vessel-accommodations");
-  registerTool(server, api, endpoints, "vessel-basics");
-  registerTool(server, api, endpoints, "vessel-histories");
-  registerTool(server, api, endpoints, "vessel-locations");
-  registerTool(server, api, endpoints, "vessel-stats");
-  registerTool(server, api, endpoints, "vessel-verbose");
+  // Register individual endpoints - one per call
+  registerTool("fetchCacheFlushDateVessels");
+  registerTool("fetchVesselAccommodations");
+  registerTool("fetchVesselAccommodationsByVesselId");
+  registerTool("fetchVesselBasics");
+  registerTool("fetchVesselBasicsByVesselId");
+  // registerTool("fetchVesselHistories");
+  registerTool("fetchVesselHistoriesByVesselNameAndDateRange");
+  registerTool("fetchVesselLocations");
+  registerTool("fetchVesselLocationsByVesselId");
+  registerTool("fetchVesselStats");
+  registerTool("fetchVesselStatsByVesselId");
+  registerTool("fetchVesselsVerbose");
+  registerTool("fetchVesselsVerboseByVesselId");
 };
-
