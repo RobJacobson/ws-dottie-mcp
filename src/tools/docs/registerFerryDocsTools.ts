@@ -5,9 +5,9 @@ import {
   ferriesSpecs,
   getTagMetadata,
   listOperationsForApi,
-} from "@/openapi/ferries.js";
-import type { apiKey } from "@/wsdottieClient.js";
-import { createErrorResponse } from "@/tools/errorHandler.js";
+} from "../../openapi/ferries.js";
+import type { apiKey } from "../../wsdottieClient.js";
+import { createErrorResponse } from "../errorHandler.js";
 
 const apiKeys = Object.keys(ferriesSpecs) as apiKey[];
 const apiEnum = z.enum(apiKeys as [apiKey, ...apiKey[]]);
