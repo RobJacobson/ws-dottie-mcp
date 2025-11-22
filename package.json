@@ -13,7 +13,8 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "server:dev": "tsx src/server.ts",
-    "server:inspect": "set DANGEROUSLY_OMIT_AUTH=true && npx @modelcontextprotocol/inspector npm run --silent server:dev"
+    "server:inspect": "set DANGEROUSLY_OMIT_AUTH=true && npx @modelcontextprotocol/inspector npm run --silent server:dev",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "mcp",
