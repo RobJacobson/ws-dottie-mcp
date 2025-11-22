@@ -1,12 +1,12 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
-  wsfSpecs,
   getTagMetadata,
   listOperationsForApi,
+  wsfSpecs,
 } from "../openapi/index.js";
 import type { apiKey } from "../wsdottieClient.js";
 import { createErrorResponse } from "./createErrorResponse.js";
@@ -83,12 +83,7 @@ This tool provides guidance on:
 Use this tool when you need guidance on how to structure tool calls for optimal performance and to avoid context bloat.`,
       inputSchema: z.object({
         topic: z
-          .enum([
-            "finding-vessel",
-            "performance",
-            "common-patterns",
-            "all",
-          ])
+          .enum(["finding-vessel", "performance", "common-patterns", "all"])
           .optional()
           .describe(
             "Specific workflow topic to retrieve. Omit for all workflows."
@@ -104,7 +99,8 @@ Use this tool when you need guidance on how to structure tool calls for optimal 
         const workflows = {
           findingVessel: {
             title: "Finding a Specific Vessel's Location",
-            pattern: "Two-step approach: list_vessel_basics → get_vessel_locations_by_vessel_id",
+            pattern:
+              "Two-step approach: list_vessel_basics → get_vessel_locations_by_vessel_id",
             why: "Avoids fetching all vessel locations when you only need one vessel",
             example: {
               question: "Where is the Tacoma?",
@@ -169,4 +165,3 @@ Use this tool when you need guidance on how to structure tool calls for optimal 
     }
   );
 };
-

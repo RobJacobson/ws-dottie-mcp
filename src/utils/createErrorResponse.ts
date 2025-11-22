@@ -34,4 +34,3 @@ export type ToolError = {
   error: string;
   details?: unknown;
 };
-

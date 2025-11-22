@@ -43,9 +43,7 @@ export type OperationSpec = {
  * @param apiKey - The API key identifying which WSF API to scan
  * @returns Array of operation specifications found in the API
  */
-export const listOperationsForApi = (
-  apiKey: WsfApiKey
-): OperationSpec[] => {
+export const listOperationsForApi = (apiKey: WsfApiKey): OperationSpec[] => {
   const doc = wsfSpecs[apiKey];
   const operations: OperationSpec[] = [];
   Object.entries(doc.paths ?? {}).forEach(([path, pathSpec]) => {
@@ -94,9 +92,7 @@ export const getTagMetadata = (
   apiKey: WsfApiKey,
   tagName: string
 ): TagMetadata | undefined => {
-  const tag = wsfSpecs[apiKey].tags?.find(
-    (entry) => entry.name === tagName
-  );
+  const tag = wsfSpecs[apiKey].tags?.find((entry) => entry.name === tagName);
   if (!tag) return undefined;
   const withExtras = tag as TagMetadata & Record<string, unknown>;
   return {
@@ -114,4 +110,3 @@ export const getTagMetadata = (
         : undefined,
   };
 };
-
