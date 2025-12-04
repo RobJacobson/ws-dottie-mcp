@@ -1,6 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerVesselsTools } from "./apis/index.js";
+import {
+  registerFaresTools,
+  registerScheduleTools,
+  registerTerminalsTools,
+  registerVesselsTools,
+} from "./apis/index.js";
 import { registerDocsTools } from "./utils/registerDocsTools.js";
 
 const server = new McpServer({
@@ -9,6 +14,9 @@ const server = new McpServer({
 });
 
 registerVesselsTools(server);
+registerFaresTools(server);
+registerScheduleTools(server);
+registerTerminalsTools(server);
 registerDocsTools(server);
 
 const transport = new StdioServerTransport();

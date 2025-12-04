@@ -21,7 +21,7 @@ export const registerVesselsTools = (server: McpServer) => {
   registerTool("fetchVesselBasics");
   registerTool("fetchVesselBasicsByVesselId");
   // registerTool("fetchVesselHistories");
-  registerTool("fetchVesselHistoriesByVesselNameAndDateRange");
+  registerTool("fetchVesselHistoriesByVesselAndDates");
   registerTool("fetchVesselLocations");
   registerTool("fetchVesselLocationsByVesselId");
   registerTool("fetchVesselStats");

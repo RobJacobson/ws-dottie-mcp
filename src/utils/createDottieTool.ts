@@ -31,9 +31,17 @@ export const createRegisterTool = <K extends apiKey>(
    */
   return (endpointName: string) => {
     // Flatten all endpoint groups into a single array and find the matching endpoint
-    const endpointEntry = Object.values(endpoints)
+    // Try to find by endpointName first, then by endpoint.functionName if endpointName doesn't match
+    let endpointEntry = Object.values(endpoints)
       .flatMap((group) => Object.entries(group))
       .find(([name]) => name === endpointName);
+
+    // If not found by endpointName, try to find by checking all endpoints' functionName
+    if (!endpointEntry) {
+      endpointEntry = Object.values(endpoints)
+        .flatMap((group) => Object.entries(group))
+        .find(([, endpoint]) => endpoint.functionName === endpointName);
+    }
 
     if (!endpointEntry) {
       throw new Error(`Endpoint "${endpointName}" not found for API "${api}"`);
@@ -42,10 +50,24 @@ export const createRegisterTool = <K extends apiKey>(
     const [, endpoint] = endpointEntry;
 
     // Get the corresponding fetch function from the API namespace
-    const fetchFn = (fetchFunctions as Record<string, any>)[endpointName];
+    // Try endpoint.functionName first, then endpointName, then common variations
+    const fetchFn =
+      (fetchFunctions as Record<string, any>)[endpoint.functionName] ||
+      (fetchFunctions as Record<string, any>)[endpointName] ||
+      // Handle case where endpoint functionName differs from export name
+      // e.g., "fetchVesselHistoriesByVesselAndDates" -> "fetchVesselHistoriesByVesselNameAndDateRange"
+      (fetchFunctions as Record<string, any>)[
+        endpoint.functionName.replace(
+          "VesselAndDates",
+          "VesselNameAndDateRange"
+        )
+      ] ||
+      (fetchFunctions as Record<string, any>)[
+        endpointName.replace("VesselAndDates", "VesselNameAndDateRange")
+      ];
     if (!fetchFn) {
       throw new Error(
-        `No fetch function found for "${endpointName}" in API "${api}"`
+        `No fetch function found for "${endpoint.functionName}", "${endpointName}", or variations in API "${api}"`
       );
     }
 
