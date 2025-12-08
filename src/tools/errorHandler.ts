@@ -1,8 +1,27 @@
+/**
+ * Error handling utilities for MCP server operations.
+ *
+ * Provides standardized error response creation and debug logging functionality
+ * for Model Context Protocol (MCP) tool handlers.
+ */
+
 import { appendFileSync } from "fs";
 import { join } from "path";
 
 /**
- * Logs to both console.error and a debug log file
+ * Logs debug information to both console and a persistent log file.
+ *
+ * Used for debugging MCP server operations, particularly error handling and
+ * response creation. Logs are written to both stderr (for immediate visibility)
+ * and a debug log file for persistent storage.
+ *
+ * @param message - The log message to record
+ * @param data - Optional additional data to include in the log entry
+ *
+ * @example
+ * ```typescript
+ * debugLog("Processing request", { userId: 123, action: "fetch" });
+ * ```
  */
 const debugLog = (message: string, data?: unknown): void => {
   const timestamp = new Date().toISOString();
@@ -17,10 +36,24 @@ const debugLog = (message: string, data?: unknown): void => {
 
 /**
  * Creates a standardized error response for MCP tool handlers.
- * Extracts the error message and includes both the message and full error details.
  *
- * @param error - The error to convert to a response (Error instance or any value)
- * @returns MCP error response with text content and isError flag
+ * Converts any error (Error instances or primitive values) into a properly formatted
+ * MCP error response. The response includes both a human-readable error message and
+ * structured error details in JSON format. This ensures consistent error handling
+ * across all MCP tools.
+ *
+ * @param error - The error to convert to a response (Error instance, string, or any value)
+ * @returns MCP-compliant error response with text content and error flag
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   // Some operation that might fail
+ *   await riskyOperation();
+ * } catch (error) {
+ *   return createErrorResponse(error);
+ * }
+ * ```
  */
 export const createErrorResponse = (
   error: unknown
@@ -79,7 +112,16 @@ export const createErrorResponse = (
   return response;
 };
 
+/**
+ * Structured error information for MCP tool responses.
+ *
+ * Represents error details that are included in MCP error responses.
+ * The error field contains a human-readable error message, while details
+ * can include additional error context or the original error object.
+ */
 export type ToolError = {
+  /** Human-readable error message */
   error: string;
+  /** Optional additional error details or context */
   details?: unknown;
 };

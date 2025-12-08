@@ -1,3 +1,11 @@
+/**
+ * Ferry API documentation tools for MCP server.
+ *
+ * Provides MCP tools for accessing metadata and documentation about Washington State
+ * Ferries API endpoints. These tools help developers understand available operations,
+ * their parameters, and usage patterns without making actual API calls.
+ */
+
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apis as apiDefinitions } from "ws-dottie/apis";
 import { z } from "zod";
@@ -5,13 +13,21 @@ import type { ApiKey } from "@/apiRegistry.js";
 import { apis as fetcherModules } from "@/apiRegistry.js";
 import { createErrorResponse } from "@/tools/errorHandler.js";
 
+// Create Zod enum for API key validation
 const apiKeys = Object.values(apiDefinitions).map(
   (api) => api.api.name
 ) as ApiKey[];
 const apiEnum = z.enum(apiKeys as [ApiKey, ...ApiKey[]]);
 
 /**
- * Gets group metadata directly from ws-dottie's API definitions.
+ * Retrieves comprehensive metadata for a specific API endpoint group.
+ *
+ * Extracts documentation, caching strategy, use cases, and other metadata
+ * from ws-dottie's API definitions for a given API and group combination.
+ *
+ * @param apiKey - The API identifier (e.g., "wsf-fares")
+ * @param groupName - The endpoint group name (e.g., "cache-flush-date-fares")
+ * @returns Group metadata object or undefined if not found
  */
 const getGroupMetadata = (
   apiKey: ApiKey,
@@ -45,10 +61,21 @@ const getGroupMetadata = (
 };
 
 /**
- * Registers the ferry documentation tools with the MCP server.
- * Provides tools for retrieving endpoint group documentation and metadata.
+ * Registers ferry API documentation tools with the MCP server.
  *
- * @param server - The MCP server instance to register tools with
+ * Creates MCP tools that provide access to Washington State Ferries API documentation
+ * and metadata. Currently registers one tool: "get_ferries_endpoint_group_docs" which
+ * returns comprehensive information about API endpoint groups including available operations,
+ * caching strategies, use cases, and documentation.
+ *
+ * @param server - The MCP server instance to register documentation tools with
+ *
+ * @example
+ * ```typescript
+ * const server = new McpServer({ name: "ferry-server", version: "1.0.0" });
+ * registerFerryDocsTools(server);
+ * // Now provides access to ferry API documentation via MCP
+ * ```
  */
 export const registerFerryDocsTools = (server: McpServer): void => {
   const inputSchema = z.object({
