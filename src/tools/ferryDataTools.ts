@@ -3,12 +3,12 @@
  *
  * This module provides the core functionality for registering Washington State Ferries
  * API operations as Model Context Protocol (MCP) tools. It dynamically generates MCP tools
- * from ws-dottie API definitions, handling schema transformation, error handling, and
+ * from ws-dottie API definitions, handling input validation, error handling, and
  * debug information collection.
  *
  * Key features:
  * - Dynamic tool registration from API definitions
- * - Schema transformation for MCP compatibility (Date → string)
+ * - Input schema validation using Zod
  * - Comprehensive error handling and logging
  * - Debug information generation for development
  * - Consistent naming conventions (get_xyz format)
@@ -21,7 +21,6 @@ import type { ApiKey } from "@/apiRegistry.js";
 import { apis as fetcherModules } from "@/apiRegistry.js";
 import { type ToolDebugInfo, writeToolDebugInfo } from "@/tools/debugUtils.js";
 import { createErrorResponse } from "@/tools/errorHandler.js";
-import { transformDateSchemaToString } from "@/tools/schemaUtils.js";
 
 /**
  * Type definitions for ws-dottie API structures.
@@ -39,8 +38,6 @@ interface WsdEndpoint {
   endpointDescription?: string;
   /** Zod schema for validating input parameters */
   inputSchema?: z.ZodTypeAny;
-  /** Zod schema for validating response data */
-  outputSchema?: z.ZodTypeAny;
 }
 
 /**
@@ -86,8 +83,6 @@ type Operation = {
   fetcher: (args?: Record<string, unknown>) => Promise<unknown>;
   /** Zod schema for validating input parameters */
   inputSchema: z.ZodTypeAny;
-  /** Zod schema for validating response data */
-  outputSchema: z.ZodTypeAny;
   /** Short summary of what this operation does */
   summary?: string;
   /** Detailed description of this operation */
@@ -182,14 +177,14 @@ const hasRegisteredFetcher = (apiDefinition: WsdApiDefinition): boolean => {
 /**
  * Creates an Operation configuration from a ws-dottie endpoint definition.
  *
- * Validates that the endpoint has required schemas and a corresponding fetcher function,
+ * Validates that the endpoint has a required input schema and a corresponding fetcher function,
  * then creates an Operation object that can be used to register an MCP tool.
  *
  * @param endpoint - The ws-dottie endpoint definition
  * @param apiKey - The API this endpoint belongs to
  * @param fetcherModule - The module containing fetcher functions
  * @returns Operation configuration or null if endpoint is invalid/unavailable
- * @throws Error if required schemas are missing
+ * @throws Error if input schema is missing
  */
 const createOperationFromEndpoint = (
   endpoint: WsdEndpoint,
@@ -208,17 +203,10 @@ const createOperationFromEndpoint = (
     );
   }
 
-  if (!endpoint.outputSchema) {
-    throw new Error(
-      `Missing output schema for ${apiKey}::${endpoint.functionName}`
-    );
-  }
-
   return {
     id: endpoint.functionName,
     fetcher: fetcher as (args?: Record<string, unknown>) => Promise<unknown>,
     inputSchema: endpoint.inputSchema,
-    outputSchema: endpoint.outputSchema,
     summary: endpoint.endpointDescription,
     description: endpoint.endpointDescription,
   };
@@ -227,8 +215,8 @@ const createOperationFromEndpoint = (
 /**
  * Extracts all valid operations from a collection of API endpoints.
  *
- * Processes each endpoint in the provided array, validates it has required
- * schemas and fetcher functions, and returns only the successfully validated
+ * Processes each endpoint in the provided array, validates it has a required
+ * input schema and fetcher function, and returns only the successfully validated
  * operations that can be registered as MCP tools.
  *
  * @param endpoints - Array of ws-dottie endpoint definitions
@@ -304,8 +292,7 @@ const buildToolGroups = (): ToolGroup[] => {
  * Registers a single ferry operation as an MCP tool.
  *
  * Creates a complete MCP tool configuration including name, title, description,
- * input/output schemas, and request handler. Handles schema transformation for
- * MCP compatibility and error handling.
+ * input schema, and request handler. Handles error handling and result serialization.
  *
  * @param server - The MCP server instance to register the tool with
  * @param ferryOperation - The ferry operation configuration to register
@@ -322,28 +309,10 @@ const registerFerryOperationAsTool = (
   const inputSchema = ferryOperation.inputSchema;
 
   // Build clean description using the operation's summary/description
-  // Include information about the output structure for discoverability
-  let description =
+  const description =
     ferryOperation.description ??
     ferryOperation.summary ??
     `${ferryOperation.id} operation`;
-
-  // Add output schema information to description for discoverability
-  // The actual structuredContent will be a serialized version of the operation's output
-  try {
-    const outputSchemaDescription = ferryOperation.outputSchema.description;
-    if (outputSchemaDescription) {
-      description += `\n\nOutput: ${outputSchemaDescription}`;
-    }
-  } catch {
-    // If we can't extract description, that's okay
-  }
-
-  // Transform the operation's outputSchema to handle Date -> string conversion
-  // This allows MCP validation to work correctly since structuredContent must be JSON-serializable
-  // Date objects are serialized to ISO strings wrapped in objects, so we transform
-  // z.date() -> z.object({ value: z.string().datetime() })
-  const outputSchema = transformDateSchemaToString(ferryOperation.outputSchema);
 
   // Define handler separately to avoid TypeScript's deep type inference issues
   // with MCP SDK + Zod generics
@@ -361,55 +330,24 @@ const registerFerryOperationAsTool = (
 
       // Serialize result to plain objects for structuredContent.
       // ws-dottie returns Date objects, but MCP requires JSON-serializable data.
-      // IMPORTANT: structuredContent must always be provided when outputSchema is defined,
-      // because MCP SDK's validateToolOutput throws an error if structuredContent is missing.
-      // The schema transformation in schemaUtils.ts ensures all root schemas are objects.
-      let structuredContent: Record<string, unknown>;
+      // Convert Date objects to ISO strings during serialization.
+      const serialized = JSON.parse(
+        JSON.stringify(result, (_key, value) =>
+          value instanceof Date ? value.toISOString() : value
+        )
+      );
 
-      if (result === undefined || result === null) {
-        // For optional schemas that return undefined, provide empty value
-        // Schema: z.object({ value: z.string().datetime().optional() })
-        structuredContent = { value: undefined };
-      } else if (result instanceof Date) {
-        // Wrap Date results in objects to match output schema transformation
-        // Schema: z.object({ value: z.string().datetime() })
-        structuredContent = { value: result.toISOString() };
-      } else if (Array.isArray(result)) {
-        // Wrap arrays in object to match output schema transformation
-        // Schema: z.object({ items: z.array(...) })
-        try {
-          const serializedItems = JSON.parse(
-            JSON.stringify(result, (_key, value) =>
-              value instanceof Date ? value.toISOString() : value
-            )
-          );
-          structuredContent = { items: serializedItems };
-        } catch {
-          structuredContent = { items: result };
-        }
-      } else if (result && typeof result === "object") {
-        // For objects, serialize dates within
-        try {
-          structuredContent = JSON.parse(
-            JSON.stringify(result, (_key, value) =>
-              value instanceof Date ? value.toISOString() : value
-            )
-          ) as Record<string, unknown>;
-        } catch {
-          structuredContent = { value: String(result) };
-        }
-      } else {
-        // For primitives, wrap in an object
-        // Schema: z.object({ value: ... })
-        structuredContent = { value: result };
-      }
+      // Ensure structuredContent is always an object when provided
+      const structuredContent: Record<string, unknown> | undefined =
+        serialized !== null &&
+        typeof serialized === "object" &&
+        !Array.isArray(serialized)
+          ? (serialized as Record<string, unknown>)
+          : { value: serialized };
 
       // Return MCP protocol response
       // - content: required array of content blocks (text representation)
-      // - structuredContent: required when outputSchema is defined (validated by MCP SDK)
-      //
-      // IMPORTANT: MCP validates structuredContent against outputSchema automatically.
-      // We must always provide structuredContent because outputSchema is always defined.
+      // - structuredContent: provided for client convenience (no schema validation)
       return {
         content: [
           {
@@ -432,7 +370,6 @@ const registerFerryOperationAsTool = (
       title: toolTitle,
       description,
       inputSchema: inputSchema as z.ZodTypeAny,
-      outputSchema: outputSchema as z.ZodTypeAny,
     },
     handler
   );
@@ -459,19 +396,10 @@ const registerToolGroupsWithServer = (
       const toolTitle = formatOperationTitle(toolName);
 
       // Build description for debug info (same logic as in registerFerryOperationAsTool)
-      let description =
+      const description =
         operation.description ??
         operation.summary ??
         `${operation.id} operation`;
-
-      try {
-        const outputSchemaDescription = operation.outputSchema.description;
-        if (outputSchemaDescription) {
-          description += `\n\nOutput: ${outputSchemaDescription}`;
-        }
-      } catch {
-        // If we can't extract description, that's okay
-      }
 
       // Collect tool information for debugging
       toolDebugInfo.push({
@@ -487,17 +415,12 @@ const registerToolGroupsWithServer = (
             summary: operation.summary,
             description: operation.description,
             hasInputSchema: !!operation.inputSchema,
-            hasOutputSchema: !!operation.outputSchema,
           },
         ],
         inputSchema: {
           type: "direct zod schema",
           description:
             "Uses operation's input schema directly with .describe() annotations",
-        },
-        outputSchema: {
-          content: "array of text content blocks",
-          structuredContent: "operation's output schema",
         },
       });
 
@@ -515,7 +438,7 @@ const registerToolGroupsWithServer = (
  * This is the main entry point for setting up ferry data access via MCP. It dynamically
  * discovers all available ferry APIs from ws-dottie, creates tool configurations for
  * each operation, and registers them with the MCP server. Each API operation becomes
- * a separate MCP tool with proper input/output validation and error handling.
+ * a separate MCP tool with proper input validation and error handling.
  *
  * The function performs three main steps:
  * 1. Build tool groups from API definitions

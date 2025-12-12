@@ -40,13 +40,9 @@ export type ToolDebugInfo = {
     description?: string;
     /** Whether the operation has input validation schema */
     hasInputSchema: boolean;
-    /** Whether the operation has output validation schema */
-    hasOutputSchema: boolean;
   }>;
   /** Input schema metadata for debugging */
   inputSchema: Record<string, unknown>;
-  /** Output schema metadata for debugging (optional for void operations) */
-  outputSchema?: Record<string, unknown>;
 };
 
 /**
