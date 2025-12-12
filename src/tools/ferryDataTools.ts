@@ -331,8 +331,7 @@ const registerFerryOperationAsTool = (
   // Add output schema information to description for discoverability
   // The actual structuredContent will be a serialized version of the operation's output
   try {
-    const outputSchemaDescription =
-      ferryOperation.outputSchema._def.description;
+    const outputSchemaDescription = ferryOperation.outputSchema.description;
     if (outputSchemaDescription) {
       description += `\n\nOutput: ${outputSchemaDescription}`;
     }
@@ -348,62 +347,69 @@ const registerFerryOperationAsTool = (
 
   // Define handler separately to avoid TypeScript's deep type inference issues
   // with MCP SDK + Zod generics
-  const handler = async (params: Record<string, unknown>) => {
+  const handler = async (params: unknown) => {
     try {
       // Parse and validate input using the operation's schema
-      const parsedParams = ferryOperation.inputSchema.parse(params);
+      const parsedParams = ferryOperation.inputSchema.parse(
+        params as Record<string, unknown>
+      );
 
       // Execute the operation
       const result = await ferryOperation.fetcher({
         params: parsedParams,
       });
 
-      // Serialize result to plain object for structuredContent
-      // ws-dottie returns Date objects (from z.date() schemas), but MCP requires
-      // plain objects. We serialize Dates to ISO strings wrapped in objects, and the
-      // outputSchema has been transformed to expect z.object({ value: z.string().datetime() })
-      // instead of z.date()
-      let structuredContent: Record<string, unknown> | undefined;
+      // Serialize result to plain objects for structuredContent.
+      // ws-dottie returns Date objects, but MCP requires JSON-serializable data.
+      // IMPORTANT: structuredContent must always be provided when outputSchema is defined,
+      // because MCP SDK's validateToolOutput throws an error if structuredContent is missing.
+      // The schema transformation in schemaUtils.ts ensures all root schemas are objects.
+      let structuredContent: Record<string, unknown>;
 
       if (result === undefined || result === null) {
-        // For optional schemas that return undefined, don't include structuredContent
-        structuredContent = undefined;
+        // For optional schemas that return undefined, provide empty value
+        // Schema: z.object({ value: z.string().datetime().optional() })
+        structuredContent = { value: undefined };
       } else if (result instanceof Date) {
-        // Date objects: Provide ISO string wrapped in object as structuredContent
-        // The outputSchema has been transformed to expect z.object({ value: z.string().datetime() })
-        // MCP requires structuredContent when an outputSchema is provided
+        // Wrap Date results in objects to match output schema transformation
+        // Schema: z.object({ value: z.string().datetime() })
         structuredContent = { value: result.toISOString() };
-      } else if (
-        result &&
-        typeof result === "object" &&
-        !Array.isArray(result)
-      ) {
-        // Plain objects - serialize to handle nested Dates
+      } else if (Array.isArray(result)) {
+        // Wrap arrays in object to match output schema transformation
+        // Schema: z.object({ items: z.array(...) })
+        try {
+          const serializedItems = JSON.parse(
+            JSON.stringify(result, (_key, value) =>
+              value instanceof Date ? value.toISOString() : value
+            )
+          );
+          structuredContent = { items: serializedItems };
+        } catch {
+          structuredContent = { items: result };
+        }
+      } else if (result && typeof result === "object") {
+        // For objects, serialize dates within
         try {
           structuredContent = JSON.parse(
-            JSON.stringify(result, (_key, value) => {
-              // Convert Date objects to ISO strings during serialization
-              if (value instanceof Date) {
-                return value.toISOString();
-              }
-              return value;
-            })
+            JSON.stringify(result, (_key, value) =>
+              value instanceof Date ? value.toISOString() : value
+            )
           ) as Record<string, unknown>;
         } catch {
-          // If serialization fails, wrap in object
           structuredContent = { value: String(result) };
         }
       } else {
-        // For primitives or arrays, wrap in an object
+        // For primitives, wrap in an object
+        // Schema: z.object({ value: ... })
         structuredContent = { value: result };
       }
 
       // Return MCP protocol response
       // - content: required array of content blocks (text representation)
-      // - structuredContent: optional structured data validated against outputSchema by MCP
+      // - structuredContent: required when outputSchema is defined (validated by MCP SDK)
       //
       // IMPORTANT: MCP validates structuredContent against outputSchema automatically.
-      // We don't need to validate the full response ourselves - MCP handles the envelope.
+      // We must always provide structuredContent because outputSchema is always defined.
       return {
         content: [
           {
@@ -411,7 +417,7 @@ const registerFerryOperationAsTool = (
             text: JSON.stringify(result, null, 2),
           },
         ],
-        ...(structuredContent !== undefined && { structuredContent }),
+        structuredContent,
       };
     } catch (error) {
       return createErrorResponse(error);
@@ -459,7 +465,7 @@ const registerToolGroupsWithServer = (
         `${operation.id} operation`;
 
       try {
-        const outputSchemaDescription = operation.outputSchema._def.description;
+        const outputSchemaDescription = operation.outputSchema.description;
         if (outputSchemaDescription) {
           description += `\n\nOutput: ${outputSchemaDescription}`;
         }

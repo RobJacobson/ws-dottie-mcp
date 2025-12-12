@@ -83,11 +83,13 @@ export const registerFerryDocsTools = (server: McpServer): void => {
     groupName: z.string(),
   });
 
-  const handler = async (params: { api: string; groupName: string }) => {
-    const { api, groupName } = params;
-    // Type assertion: api is validated by Zod schema as ApiKey
-    const apiKey = api as ApiKey;
+  const handler = async (args: unknown) => {
     try {
+      // Parse and validate input
+      const params = inputSchema.parse(args);
+      const { api, groupName } = params;
+      // Type assertion: api is validated by Zod schema as ApiKey
+      const apiKey = api as ApiKey;
       // Get API definition and group
       const apiDefinition = Object.values(apiDefinitions).find(
         (apiDef) => apiDef.api.name === apiKey
@@ -136,7 +138,6 @@ export const registerFerryDocsTools = (server: McpServer): void => {
     }
   };
 
-  // @ts-expect-error - TS2589: Type instantiation is excessively deep (MCP SDK + Zod)
   server.registerTool(
     "get_ferries_endpoint_group_docs",
     {
