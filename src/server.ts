@@ -12,9 +12,8 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-
-import { registerDottieDocTools } from "@/tools/dottieDocTools.js";
 import { registerDottieDataTools } from "@/tools/dottieDataTools.js";
+import { registerDottieDocTools } from "@/tools/dottieDocTools.js";
 
 /**
  * Main entry point for the MCP server.

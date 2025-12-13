@@ -25,6 +25,7 @@ import type {
   Endpoint,
   EndpointParams,
   EndpointResponse,
+  ToolDescription,
 } from "ws-dottie/apis";
 import { endpointsFlat } from "ws-dottie/apis";
 import type { z } from "zod";
@@ -95,6 +96,86 @@ const formatOperationTitle = (toolName: string): string => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+};
+
+/**
+ * Compiles a ToolDescription into a single newline-delimited string for MCP.
+ *
+ * Combines the structured fields from ws-dottie's ToolDescription into a
+ * cohesive description string following the standard MCP tool description template.
+ * Performs name substitution to replace ws-dottie function names with MCP tool names.
+ *
+ * @param toolDescription - The structured tool description metadata
+ * @returns Compiled description string
+ */
+const compileToolDescription = (toolDescription: ToolDescription): string => {
+  // Helper function to capitalize first letter
+  const capitalizeFirst = (str: string): string =>
+    str.charAt(0).toUpperCase() + str.slice(1);
+
+  const parts: string[] = [];
+
+  // Purpose (required)
+  parts.push(`Purpose: ${toolDescription.purpose}`);
+
+  // Use when (optional, max 3 items)
+  if (toolDescription.useWhen && toolDescription.useWhen.length > 0) {
+    parts.push(
+      `Use when:\n${toolDescription.useWhen.map((item) => `- ${capitalizeFirst(item)}`).join("\n")}`
+    );
+  }
+
+  // Avoid when (optional, max 2 items)
+  if (toolDescription.avoidWhen && toolDescription.avoidWhen.length > 0) {
+    parts.push(
+      `Avoid when:\n${toolDescription.avoidWhen.map((item) => `- ${capitalizeFirst(item)}`).join("\n")}`
+    );
+  }
+
+  // Inputs (optional)
+  if (toolDescription.inputs && toolDescription.inputs.length > 0) {
+    parts.push(
+      `Inputs:\n${toolDescription.inputs.map((item) => `- ${item}`).join("\n")}`
+    );
+  } else {
+    parts.push("Inputs: none");
+  }
+
+  // Returns (required)
+  parts.push(`Returns: ${toolDescription.returns}`);
+
+  // Output highlights (required, 4-8 clauses)
+  if (toolDescription.outputHighlights.length > 0) {
+    parts.push(
+      `Output highlights:\n${toolDescription.outputHighlights.map((item) => `- ${item}`).join("\n")}`
+    );
+  }
+
+  // Chaining (optional, 1-3 recipes)
+  if (toolDescription.chaining && toolDescription.chaining.length > 0) {
+    parts.push(
+      `Chaining:\n${toolDescription.chaining.map((item) => `- ${item}`).join("\n")}`
+    );
+  }
+
+  // Compile the description
+  let description = parts.join("\n");
+
+  // Perform name substitution: replace function names with tool names
+  // Extract all function names from the description (patterns like fetchXxx, get_x, etc.)
+  const functionNamePattern = /\b(fetch\w+|get_\w+)\b/g;
+  description = description.replace(functionNamePattern, (match) => {
+    // Convert the matched name to snake_case tool name
+    if (match.startsWith("fetch")) {
+      return formatToolName(match);
+    } else if (match.startsWith("get_")) {
+      // Already in snake_case, keep as-is
+      return match;
+    }
+    return match;
+  });
+
+  return description;
 };
 
 /**
@@ -193,8 +274,22 @@ const registerDottieOperationAsTool = (
   // Use the operation's input schema directly (with .describe() annotations)
   const inputSchema = dottieOperation.inputSchema;
 
-  // Build clean description using the endpoint's description
-  const description = dottieOperation.endpoint.endpointDescription;
+  // Build rich description from structured metadata when available
+  let description: string;
+
+  // Try to find toolDescription from the endpoint group metadata
+  const endpointMeta = dottieOperation.endpoint.group.endpoints.find(
+    (endpoint) =>
+      endpoint.functionName === dottieOperation.endpoint.functionName
+  );
+
+  if (endpointMeta?.toolDescription) {
+    // Use new structured ToolDescription metadata
+    description = compileToolDescription(endpointMeta.toolDescription);
+  } else {
+    // Fallback to legacy endpointDescription
+    description = dottieOperation.endpoint.endpointDescription;
+  }
 
   // Define handler separately to avoid TypeScript's deep type inference issues
   // with MCP SDK + Zod generics
