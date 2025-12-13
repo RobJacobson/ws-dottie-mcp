@@ -1,8 +1,8 @@
 /**
- * Ferry API documentation tools for MCP server.
+ * Dottie API documentation tools for MCP server.
  *
  * Provides MCP tools for accessing metadata and documentation about Washington State
- * Ferries API endpoints. These tools help developers understand available operations,
+ * transportation API endpoints. These tools help developers understand available operations,
  * their parameters, and usage patterns without making actual API calls.
  */
 
@@ -61,7 +61,7 @@ const getGroupMetadata = (
 };
 
 /**
- * Registers ferry API documentation tools with the MCP server.
+ * Registers transportation API documentation tools with the MCP server.
  *
  * Creates MCP tools that provide access to Washington State Ferries API documentation
  * and metadata. Currently registers one tool: "get_ferries_endpoint_group_docs" which
@@ -73,11 +73,11 @@ const getGroupMetadata = (
  * @example
  * ```typescript
  * const server = new McpServer({ name: "ferry-server", version: "1.0.0" });
- * registerFerryDocsTools(server);
+ * registerDottieDocTools(server);
  * // Now provides access to ferry API documentation via MCP
  * ```
  */
-export const registerFerryDocsTools = (server: McpServer): void => {
+export const registerDottieDocTools = (server: McpServer): void => {
   const inputSchema = z.object({
     api: apiEnum,
     groupName: z.string(),
@@ -139,11 +139,11 @@ export const registerFerryDocsTools = (server: McpServer): void => {
   };
 
   server.registerTool(
-    "get_ferries_endpoint_group_docs",
+    "get_transportation_endpoint_group_docs",
     {
-      title: "Get Ferries Endpoint Group Docs",
+      title: "Get Transportation Endpoint Group Docs",
       description:
-        "Return metadata and summaries for a ferry endpoint group (tag).",
+        "Return metadata and summaries for a transportation endpoint group (tag).",
       inputSchema: inputSchema as z.ZodTypeAny,
     },
     handler

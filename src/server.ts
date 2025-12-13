@@ -1,24 +1,25 @@
 /**
- * MCP Server for Washington State Ferries data via ws-dottie APIs.
+ * MCP Server for Washington State transportation data via ws-dottie APIs.
  *
  * This server provides Model Context Protocol (MCP) tools for accessing Washington State
- * Ferries data including schedules, fares, terminals, and vessel information.
+ * Department of Transportation and Washington State Ferries data including schedules,
+ * fares, terminals, vessel information, highway conditions, and more.
  *
  * The server registers two main tool groups:
- * - Ferry data tools: Direct API access to ferry operations
- * - Ferry docs tools: Metadata and documentation for API endpoints
+ * - Dottie data tools: Direct API access to transportation operations
+ * - Dottie doc tools: Metadata and documentation for API endpoints
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { registerFerryDocsTools } from "@/tools/docs/registerFerryDocsTools.js";
-import { registerFerryDataTools } from "@/tools/ferryDataTools.js";
+import { registerDottieDocTools } from "@/tools/dottieDocTools.js";
+import { registerDottieDataTools } from "@/tools/dottieDataTools.js";
 
 /**
  * Main entry point for the MCP server.
  *
- * Initializes the MCP server, registers all ferry-related tools, and establishes
+ * Initializes the MCP server, registers all transportation-related tools, and establishes
  * communication via stdio transport for MCP client connections.
  *
  * @returns Promise that resolves when the server is fully initialized and connected
@@ -27,8 +28,8 @@ import { registerFerryDataTools } from "@/tools/ferryDataTools.js";
 const main = async (): Promise<void> => {
   const server = new McpServer({ name: "ws-dottie-mcp", version: "0.1.0" });
 
-  registerFerryDataTools(server);
-  registerFerryDocsTools(server);
+  registerDottieDataTools(server);
+  registerDottieDocTools(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
